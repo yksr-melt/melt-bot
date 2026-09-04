@@ -6,3 +6,8 @@ node_modules/
 *.db-wal
 config.json
 prisma/migrations/
+lavalink/Lavalink.jar
+lavalink/plugins/
+lavalink/application.yml
+lavalink/logs/
+.DS_Store

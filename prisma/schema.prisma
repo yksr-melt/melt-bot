@@ -8,111 +8,111 @@ datasource db {
 }
 
 model GuildConfig {
-  guildId                 String      @id @map("guild_id")
-  logChannelId            String?     @map("log_channel_id")
-  welcomeChannelId        String?     @map("welcome_channel_id")
-  suggestionChannelId     String?     @map("suggestion_channel_id")
-  ticketCategoryId        String?     @map("ticket_category_id")
-  createVcChannelId       String?     @map("create_vc_channel_id")
-  anonymousSuggestion     Boolean     @default(true) @map("anonymous_suggestion")
-  createdAt               DateTime    @default(now()) @map("created_at")
-  updatedAt               DateTime    @updatedAt @map("updated_at")
-  rolePanels              RolePanel[]
-  strikeUsers             StrikeUser[]
-  strikeHistories         StrikeHistory[]
-  strikeRules             StrikeRule[]
-  tempVoiceChannels       TempVC[]
-  tickets                 Ticket[]
+  guildId             String          @id @map("guild_id")
+  logChannelId        String?         @map("log_channel_id")
+  welcomeChannelId    String?         @map("welcome_channel_id")
+  suggestionChannelId String?         @map("suggestion_channel_id")
+  ticketCategoryId    String?         @map("ticket_category_id")
+  createVcChannelId   String?         @map("create_vc_channel_id")
+  anonymousSuggestion Boolean         @default(true) @map("anonymous_suggestion")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  rolePanels          RolePanel[]
+  strikeUsers         StrikeUser[]
+  strikeHistories     StrikeHistory[]
+  strikeRules         StrikeRule[]
+  tempVoiceChannels   TempVC[]
+  tickets             Ticket[]
 
   @@map("GuildConfig")
 }
 
 model StrikeUser {
-  guildId       String       @map("guild_id")
-  userId        String       @map("user_id")
-  strikeCount   Int          @default(0) @map("strike_count")
-  lastStrikeAt  DateTime?    @map("last_strike_at")
-  guild         GuildConfig  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  guildId      String      @map("guild_id")
+  userId       String      @map("user_id")
+  strikeCount  Int         @default(0) @map("strike_count")
+  lastStrikeAt DateTime?   @map("last_strike_at")
+  guild        GuildConfig @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
 
   @@id([guildId, userId])
   @@map("StrikeUser")
 }
 
 model StrikeHistory {
-  id           Int          @id @default(autoincrement())
-  guildId      String       @map("guild_id")
-  userId       String       @map("user_id")
-  moderatorId  String?      @map("moderator_id")
-  amount       Int
-  reason       String?
-  createdAt    DateTime     @default(now()) @map("created_at")
-  guild        GuildConfig  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  id          Int         @id @default(autoincrement())
+  guildId     String      @map("guild_id")
+  userId      String      @map("user_id")
+  moderatorId String?     @map("moderator_id")
+  amount      Int
+  reason      String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  guild       GuildConfig @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
 
   @@index([guildId, userId, createdAt])
   @@map("StrikeHistory")
 }
 
 model StrikeRule {
-  guildId   String        @map("guild_id")
-  strike    Int
-  action    StrikeAction
-  duration  Int?
-  roleId    String?       @map("role_id")
-  guild     GuildConfig   @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  guildId  String       @map("guild_id")
+  strike   Int
+  action   StrikeAction
+  duration Int?
+  roleId   String?      @map("role_id")
+  guild    GuildConfig  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
 
   @@id([guildId, strike])
   @@map("StrikeRule")
 }
 
 model TempVC {
-  channelId  String       @id @map("channel_id")
-  guildId    String       @map("guild_id")
-  ownerId    String       @map("owner_id")
-  createdAt  DateTime     @default(now()) @map("created_at")
-  guild      GuildConfig  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  channelId String      @id @map("channel_id")
+  guildId   String      @map("guild_id")
+  ownerId   String      @map("owner_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+  guild     GuildConfig @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
 
   @@index([guildId, ownerId])
   @@map("TempVC")
 }
 
 model Ticket {
-  ticketId   Int           @id @default(autoincrement()) @map("ticket_id")
-  guildId    String        @map("guild_id")
-  userId     String        @map("user_id")
-  channelId  String        @unique @map("channel_id")
-  status     TicketStatus  @default(OPEN)
-  createdAt  DateTime      @default(now()) @map("created_at")
-  guild      GuildConfig   @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  ticketId  Int          @id @default(autoincrement()) @map("ticket_id")
+  guildId   String       @map("guild_id")
+  userId    String       @map("user_id")
+  channelId String       @unique @map("channel_id")
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now()) @map("created_at")
+  guild     GuildConfig  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
 
   @@index([guildId, userId, status])
   @@map("Ticket")
 }
 
 model RolePanel {
-  id           String             @id @default(cuid())
-  guildId      String             @map("guild_id")
-  channelId    String?            @map("channel_id")
-  messageId    String?            @unique @map("message_id")
-  title        String
-  description  String?
-  createdById  String             @map("created_by_id")
-  createdAt    DateTime           @default(now()) @map("created_at")
-  updatedAt    DateTime           @updatedAt @map("updated_at")
-  guild        GuildConfig        @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
-  options      RolePanelOption[]
+  id          String            @id @default(cuid())
+  guildId     String            @map("guild_id")
+  channelId   String?           @map("channel_id")
+  messageId   String?           @unique @map("message_id")
+  title       String
+  description String?
+  createdById String            @map("created_by_id")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  guild       GuildConfig       @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  options     RolePanelOption[]
 
   @@index([guildId])
   @@map("RolePanel")
 }
 
 model RolePanelOption {
-  id         String     @id @default(cuid())
-  panelId    String     @map("panel_id")
-  roleId     String     @map("role_id")
-  label      String
-  emoji      String?
-  createdAt  DateTime   @default(now()) @map("created_at")
-  panel      RolePanel  @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  panelId   String    @map("panel_id")
+  roleId    String    @map("role_id")
+  label     String
+  emoji     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  panel     RolePanel @relation(fields: [panelId], references: [id], onDelete: Cascade)
 
   @@unique([panelId, roleId])
   @@map("RolePanelOption")
@@ -128,4 +128,113 @@ enum StrikeAction {
 enum TicketStatus {
   OPEN
   CLOSED
+}
+
+model EconomyUser {
+  guildId             String               @map("guild_id")
+  userId              String               @map("user_id")
+  stone               BigInt               @default(0)
+  coin                BigInt               @default(0)
+  ap                  Int                  @default(48)
+  apUpdatedAt         DateTime             @default(now()) @map("ap_updated_at")
+  level               Int                  @default(1)
+  xp                  Int                  @default(0)
+  gachaPullCount      Int                  @default(0) @map("gacha_pull_count")
+  collectionTickets   Int                  @default(0) @map("collection_tickets")
+  coinExchangeCount   Int                  @default(0) @map("coin_exchange_count")
+  coinExchangeResetAt DateTime             @default(now()) @map("coin_exchange_reset_at")
+  lastWorkAt          DateTime?            @map("last_work_at")
+  lastMessageXpAt     DateTime?            @map("last_message_xp_at")
+  workCount           Int                  @default(0) @map("work_count")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  items               UserItem[]
+  collectionItems     UserCollectionItem[]
+  buffs               UserBuff[]
+  slotMachine         SlotMachine?
+  achievements        UserAchievement[]
+
+  @@id([guildId, userId])
+  @@map("EconomyUser")
+}
+
+model UserAchievement {
+  guildId       String      @map("guild_id")
+  userId        String      @map("user_id")
+  achievementId String      @map("achievement_id")
+  completedAt   DateTime    @default(now()) @map("completed_at")
+  user          EconomyUser @relation(fields: [guildId, userId], references: [guildId, userId], onDelete: Cascade)
+
+  @@id([guildId, userId, achievementId])
+  @@map("UserAchievement")
+}
+
+model UserBuff {
+  id            Int         @id @default(autoincrement())
+  guildId       String      @map("guild_id")
+  userId        String      @map("user_id")
+  type          String
+  value         Float       @default(1)
+  remainingUses Int?        @map("remaining_uses")
+  expiresAt     DateTime?   @map("expires_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  user          EconomyUser @relation(fields: [guildId, userId], references: [guildId, userId], onDelete: Cascade)
+
+  @@index([guildId, userId, type])
+  @@map("UserBuff")
+}
+
+model SlotMachine {
+  guildId          String      @map("guild_id")
+  userId           String      @map("user_id")
+  setting          Int         @default(1)
+  settingResetAt   DateTime    @default(now()) @map("setting_reset_at")
+  seated           Boolean     @default(false)
+  seatedAt         DateTime?   @map("seated_at")
+  renchanGamesLeft Int         @default(0) @map("renchan_games_left")
+  pendingBonus     String?     @map("pending_bonus")
+  pendingSpinsLeft Int?        @map("pending_spins_left")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  user             EconomyUser @relation(fields: [guildId, userId], references: [guildId, userId], onDelete: Cascade)
+
+  @@id([guildId, userId])
+  @@map("SlotMachine")
+}
+
+model UserItem {
+  guildId   String      @map("guild_id")
+  userId    String      @map("user_id")
+  itemKey   String      @map("item_key")
+  count     Int         @default(0)
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  user      EconomyUser @relation(fields: [guildId, userId], references: [guildId, userId], onDelete: Cascade)
+
+  @@id([guildId, userId, itemKey])
+  @@map("UserItem")
+}
+
+model UserCollectionItem {
+  guildId         String      @map("guild_id")
+  userId          String      @map("user_id")
+  itemId          Int         @map("item_id")
+  count           Int         @default(1)
+  firstAcquiredAt DateTime    @default(now()) @map("first_acquired_at")
+  user            EconomyUser @relation(fields: [guildId, userId], references: [guildId, userId], onDelete: Cascade)
+
+  @@id([guildId, userId, itemId])
+  @@map("UserCollectionItem")
+}
+
+model GachaLog {
+  id        Int      @id @default(autoincrement())
+  guildId   String   @map("guild_id")
+  userId    String   @map("user_id")
+  rarity    String
+  itemKey   String   @map("item_key")
+  isPickup  Boolean  @default(false) @map("is_pickup")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([guildId, userId, createdAt])
+  @@map("GachaLog")
 }

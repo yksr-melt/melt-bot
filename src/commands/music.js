@@ -1,8 +1,19 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const { getDisTube } = require("../services/music");
+const {
+  getLavalink,
+  getOrCreatePlayer,
+  resolveSpotifyFallbackQuery,
+  isSpotifyPlaylistOrAlbum,
+  SPOTIFY_URL_REGEX,
+} = require("../services/music");
+const { spotify: spotifyConfig } = require("../config");
+const { formatDuration } = require("../utils/text");
 
 const VOLUME_MIN = 1;
 const VOLUME_MAX = 100;
+
+const REPEAT_MODE_BY_CHOICE = { 0: "off", 1: "track", 2: "queue" };
+const REPEAT_MODE_LABEL = { off: "オフ", track: "1曲ループ", queue: "全曲ループ" };
 
 function requireVoiceChannel(interaction) {
   const vc = interaction.member?.voice?.channel;
@@ -16,16 +27,28 @@ function requireVoiceChannel(interaction) {
   return vc;
 }
 
-function requireQueue(interaction) {
-  const queue = getDisTube().getQueue(interaction.guildId);
-  if (!queue) {
+function requirePlayer(interaction) {
+  const player = getLavalink().getPlayer(interaction.guildId);
+  if (!player || (!player.queue.current && player.queue.tracks.length === 0)) {
     interaction.reply({
       content: "❌ 現在再生中の曲がありません。",
       ephemeral: true,
     });
     return null;
   }
-  return queue;
+  return player;
+}
+
+function requireSameVoiceChannel(interaction, player) {
+  const vc = interaction.member?.voice?.channel;
+  if (player.voiceChannelId && vc?.id !== player.voiceChannelId) {
+    interaction.reply({
+      content: "❌ Botと同じボイスチャンネルに参加してから使用してください。",
+      ephemeral: true,
+    });
+    return false;
+  }
+  return true;
 }
 
 const data = new SlashCommandBuilder()
@@ -92,7 +115,6 @@ const data = new SlashCommandBuilder()
 
 async function execute(interaction) {
   const sub = interaction.options.getSubcommand();
-  const distube = getDisTube();
 
   // play だけ defer（検索に時間がかかる）
   if (sub === "play") {
@@ -105,115 +127,194 @@ async function execute(interaction) {
         const vc = requireVoiceChannel(interaction);
         if (!vc) return;
 
-        const query = interaction.options.getString("query");
+        const lavalink = getLavalink();
+        const existingPlayer = lavalink.getPlayer(interaction.guildId);
+        if (existingPlayer && existingPlayer.voiceChannelId !== vc.id) {
+          await interaction.editReply("❌ Botと同じボイスチャンネルに参加してから使用してください。");
+          return;
+        }
 
-        await distube.play(vc, query, {
-          member: interaction.member,
-          textChannel: interaction.channel,
-          interaction,
+        const player = getOrCreatePlayer({
+          guildId: interaction.guildId,
+          voiceChannelId: vc.id,
+          textChannelId: interaction.channelId,
         });
 
-        // playSong / addSong イベントでメッセージ送信されるので
-        // ここでは defer を解決するだけ
-        await interaction.editReply("🔍 検索中...");
+        if (!player.connected) {
+          await player.connect();
+        }
+
+        let query = interaction.options.getString("query");
+
+        if (SPOTIFY_URL_REGEX.test(query)) {
+          if (!spotifyConfig.sourceEnabled) {
+            if (isSpotifyPlaylistOrAlbum(query)) {
+              await interaction.editReply(
+                "❌ Spotifyのプレイリスト/アルバムはSpotify連携が未設定のため再生できません。曲を1曲ずつ指定するか、管理者にSpotify APIキーの設定を依頼してください。"
+              );
+              return;
+            }
+
+            const fallbackQuery = await resolveSpotifyFallbackQuery(query);
+            if (!fallbackQuery) {
+              await interaction.editReply("❌ Spotifyの曲情報を取得できませんでした。");
+              return;
+            }
+            query = fallbackQuery;
+          }
+        }
+
+        const result = await player.search({ query }, interaction.user);
+
+        if (!result || result.loadType === "error" || result.loadType === "empty" || result.tracks.length === 0) {
+          await interaction.editReply("❌ 曲が見つかりませんでした。");
+          return;
+        }
+
+        let embed;
+        if (result.loadType === "playlist") {
+          player.queue.add(result.tracks);
+          embed = new EmbedBuilder()
+            .setColor(0x57f287)
+            .setTitle("➕ プレイリストを追加")
+            .setDescription(`**${result.playlist.name}** (${result.tracks.length}曲)`);
+        } else {
+          const track = result.tracks[0];
+          player.queue.add(track);
+          embed = new EmbedBuilder()
+            .setColor(0x57f287)
+            .setTitle("➕ キューに追加")
+            .setDescription(`**[${track.info.title}](${track.info.uri})**`)
+            .addFields(
+              {
+                name: "再生時間",
+                value: track.info.isStream ? "LIVE" : formatDuration(track.info.duration),
+                inline: true,
+              },
+              { name: "キュー位置", value: `#${player.queue.tracks.length}`, inline: true }
+            );
+        }
+
+        await interaction.editReply({ embeds: [embed] });
+
+        if (!player.playing && !player.paused) {
+          await player.play();
+        }
         break;
       }
 
       case "pause": {
-        const queue = requireQueue(interaction);
-        if (!queue) return;
-        if (queue.paused) {
+        const player = requirePlayer(interaction);
+        if (!player) return;
+        if (!requireSameVoiceChannel(interaction, player)) return;
+        if (player.paused) {
           return interaction.reply({ content: "⚠️ すでに一時停止中です。", ephemeral: true });
         }
-        await distube.pause(interaction.guildId);
+        await player.pause();
         await interaction.reply("⏸️ 一時停止しました。");
         break;
       }
 
       case "resume": {
-        const queue = requireQueue(interaction);
-        if (!queue) return;
-        if (!queue.paused) {
+        const player = requirePlayer(interaction);
+        if (!player) return;
+        if (!requireSameVoiceChannel(interaction, player)) return;
+        if (!player.paused) {
           return interaction.reply({ content: "⚠️ すでに再生中です。", ephemeral: true });
         }
-        await distube.resume(interaction.guildId);
+        await player.resume();
         await interaction.reply("▶️ 再開しました。");
         break;
       }
 
       case "skip": {
-        const queue = requireQueue(interaction);
-        if (!queue) return;
-        if (queue.songs.length <= 1) {
+        const player = requirePlayer(interaction);
+        if (!player) return;
+        if (!requireSameVoiceChannel(interaction, player)) return;
+        if (player.queue.tracks.length === 0) {
           return interaction.reply({ content: "⚠️ スキップできる次の曲がありません。", ephemeral: true });
         }
-        await distube.skip(interaction.guildId);
+        await player.skip();
         await interaction.reply("⏭️ スキップしました。");
         break;
       }
 
       case "stop": {
-        const queue = requireQueue(interaction);
-        if (!queue) return;
-        await distube.stop(interaction.guildId);
+        const player = requirePlayer(interaction);
+        if (!player) return;
+        if (!requireSameVoiceChannel(interaction, player)) return;
+        await player.destroy();
         await interaction.reply("⏹️ 停止してキューをクリアしました。");
         break;
       }
 
       case "nowplaying": {
-        const queue = requireQueue(interaction);
-        if (!queue) return;
-        const song = queue.songs[0];
+        const player = requirePlayer(interaction);
+        if (!player) return;
+        const track = player.queue.current;
+        if (!track) {
+          return interaction.reply({ content: "❌ 現在再生中の曲がありません。", ephemeral: true });
+        }
         const embed = new EmbedBuilder()
           .setColor(0x5865f2)
           .setTitle("🎵 再生中")
-          .setDescription(`**[${song.name}](${song.url})**`)
+          .setDescription(`**[${track.info.title}](${track.info.uri})**`)
           .addFields(
-            { name: "再生時間", value: `${queue.formattedCurrentTime} / ${song.formattedDuration}`, inline: true },
-            { name: "音量", value: `${queue.volume}%`, inline: true },
-            { name: "リクエスト", value: `${song.user}`, inline: true }
+            {
+              name: "再生時間",
+              value: track.info.isStream
+                ? "LIVE"
+                : `${formatDuration(player.position)} / ${formatDuration(track.info.duration)}`,
+              inline: true,
+            },
+            { name: "音量", value: `${player.volume}%`, inline: true },
+            { name: "リクエスト", value: `${track.requester ?? "unknown"}`, inline: true }
           )
-          .setThumbnail(song.thumbnail);
+          .setThumbnail(track.info.artworkUrl ?? null);
         await interaction.reply({ embeds: [embed] });
         break;
       }
 
       case "queue": {
-        const queue = requireQueue(interaction);
-        if (!queue) return;
-        const songs = queue.songs
+        const player = requirePlayer(interaction);
+        if (!player) return;
+        const current = player.queue.current;
+        const upcoming = player.queue.tracks
           .slice(0, 10)
-          .map((s, i) =>
-            i === 0
-              ? `▶️ **${s.name}** (${s.formattedDuration})`
-              : `${i}. ${s.name} (${s.formattedDuration})`
-          )
+          .map((track, i) => `${i + 1}. ${track.info.title} (${formatDuration(track.info.duration)})`)
+          .join("\n");
+        const description = [
+          current ? `▶️ **${current.info.title}** (${formatDuration(current.info.duration)})` : null,
+          upcoming || null,
+        ]
+          .filter(Boolean)
           .join("\n");
         const embed = new EmbedBuilder()
           .setColor(0x5865f2)
           .setTitle("📋 キュー")
-          .setDescription(songs || "曲がありません")
-          .setFooter({ text: `合計 ${queue.songs.length} 曲` });
+          .setDescription(description || "曲がありません")
+          .setFooter({ text: `合計 ${player.queue.tracks.length + (current ? 1 : 0)} 曲` });
         await interaction.reply({ embeds: [embed] });
         break;
       }
 
       case "volume": {
-        const queue = requireQueue(interaction);
-        if (!queue) return;
+        const player = requirePlayer(interaction);
+        if (!player) return;
+        if (!requireSameVoiceChannel(interaction, player)) return;
         const level = interaction.options.getInteger("level");
-        await distube.setVolume(interaction.guildId, level);
+        await player.setVolume(level);
         await interaction.reply(`🔊 音量を ${level}% に設定しました。`);
         break;
       }
 
-    case "loop": {
-        const queue = requireQueue(interaction);
-        if (!queue) return;
-        const mode = parseInt(interaction.options.getString("mode"));
-        await distube.setRepeatMode(interaction.guildId, mode);
-        const labels = ["オフ", "1曲ループ", "全曲ループ"];
-        await interaction.reply(`🔁 ループモード: **${labels[mode]}**`);
+      case "loop": {
+        const player = requirePlayer(interaction);
+        if (!player) return;
+        if (!requireSameVoiceChannel(interaction, player)) return;
+        const mode = REPEAT_MODE_BY_CHOICE[interaction.options.getString("mode")];
+        await player.setRepeatMode(mode);
+        await interaction.reply(`🔁 ループモード: **${REPEAT_MODE_LABEL[mode]}**`);
         break;
       }
     }

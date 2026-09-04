@@ -1,53 +1,61 @@
 const { EmbedBuilder } = require("discord.js");
+const { formatDuration } = require("../utils/text");
 
-function registerMusicEvents(client, distube) {
-  distube.on("playSong", (queue, song) => {
+function getTextChannel(client, player) {
+  if (!player.textChannelId) return null;
+  return client.channels.cache.get(player.textChannelId) ?? null;
+}
+
+function registerMusicEvents(client, lavalink) {
+  lavalink.on("trackStart", (player, track) => {
+    const channel = getTextChannel(client, player);
+    if (!channel) return;
+
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
       .setTitle("▶️ 再生中")
-      .setDescription(`**[${song.name}](${song.url})**`)
+      .setDescription(`**[${track.info.title}](${track.info.uri})**`)
       .addFields(
-        { name: "再生時間", value: song.formattedDuration, inline: true },
-        { name: "リクエスト", value: `${song.user}`, inline: true }
+        { name: "再生時間", value: track.info.isStream ? "LIVE" : formatDuration(track.info.duration), inline: true },
+        { name: "リクエスト", value: `${track.requester ?? "unknown"}`, inline: true }
       )
-      .setThumbnail(song.thumbnail);
+      .setThumbnail(track.info.artworkUrl ?? null);
 
-    queue.textChannel?.send({ embeds: [embed] });
+    channel.send({ embeds: [embed] }).catch((error) => console.error("Failed to send trackStart message:", error));
   });
 
-  distube.on("addSong", (queue, song) => {
-    const embed = new EmbedBuilder()
-      .setColor(0x57f287)
-      .setTitle("➕ キューに追加")
-      .setDescription(`**[${song.name}](${song.url})**`)
-      .addFields(
-        { name: "再生時間", value: song.formattedDuration, inline: true },
-        { name: "キュー位置", value: `#${queue.songs.length}`, inline: true }
-      );
-
-    queue.textChannel?.send({ embeds: [embed] });
+  lavalink.on("queueEnd", (player) => {
+    const channel = getTextChannel(client, player);
+    channel?.send("⏹️ キューが終了しました。").catch(() => undefined);
   });
 
-  distube.on("addList", (queue, playlist) => {
-    const embed = new EmbedBuilder()
-      .setColor(0x57f287)
-      .setTitle("➕ プレイリストを追加")
-      .setDescription(`**${playlist.name}** (${playlist.songs.length}曲)`);
-
-    queue.textChannel?.send({ embeds: [embed] });
+  lavalink.on("trackError", (player, track, payload) => {
+    console.error("Lavalink track error:", payload?.exception ?? payload);
+    const channel = getTextChannel(client, player);
+    channel
+      ?.send(`❌ 再生中にエラーが発生しました: ${payload?.exception?.message ?? "不明なエラー"}`)
+      .catch(() => undefined);
   });
 
-  distube.on("finish", (queue) => {
-    queue.textChannel?.send("⏹️ キューが終了しました。");
+  lavalink.on("trackStuck", (player, track) => {
+    const channel = getTextChannel(client, player);
+    channel?.send(`⚠️ **${track.info.title}** の再生がスタックしたためスキップしました。`).catch(() => undefined);
   });
 
-  distube.on("error", (error, queue) => {
-    console.error("DisTube error:", error);
-    queue?.textChannel?.send(`❌ エラーが発生しました: ${error.message}`);
+  lavalink.on("playerDestroy", (player, reason) => {
+    const channel = getTextChannel(client, player);
+    if (!channel) return;
+    if (reason === "QueueEmpty" || reason === "Disconnected") {
+      channel.send("👋 一定時間再生がなかったため、ボイスチャンネルから切断しました。").catch(() => undefined);
+    }
   });
 
-  distube.on("disconnect", (queue) => {
-    queue.textChannel?.send("👋 ボイスチャンネルから切断しました。");
+  lavalink.nodeManager.on("error", (node, error) => {
+    console.error(`Lavalink node "${node.id}" error:`, error);
+  });
+
+  lavalink.nodeManager.on("disconnect", (node, reason) => {
+    console.warn(`Lavalink node "${node.id}" disconnected:`, reason);
   });
 }
 

@@ -11,6 +11,8 @@ const { registerEvents } = require("./events");
 const { handleRolePanelButton } = require("./interactions/role-panel");
 const { handleSuggestionInteraction } = require("./interactions/suggestion");
 const { handleTicketInteraction } = require("./interactions/ticket");
+const { handleBlackjackInteraction } = require("./interactions/blackjack");
+const { handleSlotInteraction } = require("./interactions/slot");
 const { prisma } = require("./db");
 
 const client = new Client({
@@ -53,6 +55,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (await handleTicketInteraction(interaction)) {
+      return;
+    }
+
+    if (await handleBlackjackInteraction(interaction)) {
+      return;
+    }
+
+    if (await handleSlotInteraction(interaction)) {
       return;
     }
 

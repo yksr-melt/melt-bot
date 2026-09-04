@@ -1,0 +1,96 @@
+lavalink:
+  plugins:
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.2"
+      repository: "https://maven.lavalink.dev/releases"
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.3"
+      repository: "https://maven.lavalink.dev/releases"
+  server:
+    password: "${LAVALINK_PASSWORD:youshallnotpass}"
+    sources:
+      youtube: false # youtube-plugin が代わりに処理する
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: false
+      local: false
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10
+    resamplingQuality: LOW
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true
+    playerUpdateInterval: 5
+    # SoundCloudの30秒プレビュー限定トラック(フル再生に非対応)を除外し、
+    # 再生時の404エラー(https://github.com/lavalink-devs/Lavalink/issues/1175)を防ぐ
+    soundcloudFilterOutPreviewTracks: true
+    gc-warnings: true
+
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+
+    # YouTubeの署名cipherは頻繁に変化するため、第三者の公開デシファーサーバーで解決する
+    # (自前ホストも可: https://github.com/kikkia/yt-cipher)。不要なら削除してよい。
+    remoteCipher:
+      url: "https://cipher.kikkia.dev/"
+      userAgent: "melt-bot"
+
+    # YouTube側のbot検知でエラーになる場合はOAuthを有効化する。
+    # 初回起動時にターミナルへdevice code認証URLが表示されるので、
+    # 【メインアカウントではなく必ずバーナー用Googleアカウント】でアクセスして認証すること
+    # (アカウントが制限/BANされるリスクがあるため)。
+    # 認証成功後にターミナルへ出力されるrefreshTokenを下に貼り付け、
+    # skipInitialization: true を有効化すると次回以降は認証フローをスキップできる。
+    oauth:
+      enabled: true
+      # refreshToken: "ここに取得したrefreshTokenを貼り付け"
+      # skipInitialization: true
+
+    clients:
+      - MUSIC
+      - WEB
+      - WEBEMBEDDED
+      - ANDROID_TESTSUITE
+      - TVHTML5EMBEDDED
+  lavasrc:
+    providers:
+      - "ytsearch:\"%ISRC%\""
+      - "ytsearch:%QUERY%"
+    sources:
+      # SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET が未設定の場合は自動的に無効化される想定でfalseのままでOK。
+      # 取得できたら true にし、下の spotify.clientId/clientSecret に反映すること。
+      spotify: ${SPOTIFY_SOURCE_ENABLED:false}
+      applemusic: false
+      deezer: false
+      yandexmusic: false
+      flowerytts: false
+    spotify:
+      clientId: "${SPOTIFY_CLIENT_ID:}"
+      clientSecret: "${SPOTIFY_CLIENT_SECRET:}"
+      countryCode: "JP"
+      # 1ページ100曲 x 6ページ = 最大600曲までプレイリストを読み込む（distube時代の100曲上限を解消）
+      playlistLoadLimit: 6
+      albumLoadLimit: 6
+
+server:
+  port: ${LAVALINK_SERVER_PORT:2333}
+  address: 0.0.0.0
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+
+logging:
+  level:
+    root: INFO
+    lavalink: INFO
+    dev.lavalink.youtube.http.YoutubeOauth2Handler: INFO # OAuth認証URL/refreshTokenをログに出すために必要
+  logback:
+    rollingpolicy:
+      max-file-size: 1GB
+      max-history: 5
