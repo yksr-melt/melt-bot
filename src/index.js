@@ -9,6 +9,7 @@ const { discordToken } = require("./config");
 const { commands } = require("./commands");
 const { registerEvents } = require("./events");
 const { handleRolePanelButton } = require("./interactions/role-panel");
+const { handleMarshmallowInteraction } = require("./interactions/marshmallow");
 const { handleSuggestionInteraction } = require("./interactions/suggestion");
 const { handleTicketInteraction } = require("./interactions/ticket");
 const { handleBlackjackInteraction } = require("./interactions/blackjack");
@@ -67,6 +68,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (await handleSuggestionInteraction(interaction)) {
+      return;
+    }
+
+    if (await handleMarshmallowInteraction(interaction)) {
       return;
     }
 

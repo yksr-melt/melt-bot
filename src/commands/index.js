@@ -7,6 +7,7 @@ const gachaCommand = require("./gacha");
 const itemCommand = require("./item");
 const keibaCommand = require("./keiba");
 const kickCommand = require("./kick");
+const marshmallowCommand = require("./marshmallow");
 const rankingCommand = require("./ranking");
 const rolePanelCommand = require("./role-panel");
 const slotCommand = require("./slot");
@@ -29,6 +30,7 @@ const commands = [
   itemCommand,
   keibaCommand,
   kickCommand,
+  marshmallowCommand,
   rankingCommand,
   rolePanelCommand,
   slotCommand,
