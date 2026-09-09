@@ -121,6 +121,7 @@ node src/register-commands.js --clear-guild=<古いGUILD_ID>
 * `/ticket panel`
 * `/ticket close`
 * `/suggestion panel`
+* `/marshmallow-panel`（匿名メッセージ送信パネルを投稿。送信内容は固定チャンネルに転送）
 * `/music play`
 * `/music pause`
 * `/music resume`
