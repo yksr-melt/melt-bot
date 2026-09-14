@@ -9,7 +9,14 @@ const {
 const RECEIVE_CHANNEL_ID = "1541797233769578618";
 
 function buildMarshmallowModal() {
-  const input = new TextInputBuilder()
+  const radioName = new TextInputBuilder()
+    .setCustomId("radio-name")
+    .setLabel("ラジオネーム（任意）")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setMaxLength(80);
+
+  const content = new TextInputBuilder()
     .setCustomId("content")
     .setLabel("メッセージ")
     .setStyle(TextInputStyle.Paragraph)
@@ -19,7 +26,10 @@ function buildMarshmallowModal() {
   return new ModalBuilder()
     .setCustomId("marshmallow:submit")
     .setTitle("ましゅまろを送る")
-    .addComponents(new ActionRowBuilder().addComponents(input));
+    .addComponents(
+      new ActionRowBuilder().addComponents(radioName),
+      new ActionRowBuilder().addComponents(content),
+    );
 }
 
 async function handleMarshmallowInteraction(interaction) {
@@ -33,6 +43,7 @@ async function handleMarshmallowInteraction(interaction) {
   }
 
   const content = interaction.fields.getTextInputValue("content").trim();
+  const radioName = interaction.fields.getTextInputValue("radio-name").trim();
 
   if (!content) {
     await interaction.reply({ content: "メッセージが空だよ〜", ephemeral: true });
@@ -51,6 +62,10 @@ async function handleMarshmallowInteraction(interaction) {
     .setDescription(content)
     .setColor(0x5865f2)
     .setTimestamp();
+
+  if (radioName) {
+    embed.setFooter({ text: `ラジオネーム: ${radioName}` });
+  }
 
   await channel.send({ embeds: [embed] });
   await interaction.reply({ content: "記録したよ〜", ephemeral: true });
