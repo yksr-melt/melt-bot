@@ -38,63 +38,29 @@
         "channelId": "YOUR_EVENT_LOG_CHANNEL_ID"
       }
     },
-    "moderation": {
-      "strikeDecayDays": 30,
-      "punishments": {
-        "1": {
-          "action": "WARNING"
-        },
-        "2": {
-          "action": "TIMEOUT",
-          "durationSeconds": 86400
-        },
-        "3": {
-          "action": "TIMEOUT",
-          "durationSeconds": 604800
-        },
-        "4": {
-          "action": "KICK"
-        },
-        "5": {
-          "action": "BAN"
-        }
-      },
-      "strikeRoles": {
-        "1": "",
-        "2": "",
-        "3": "",
-        "4": "",
-        "5": ""
-      }
-    },
     "antiRaid": {
       "enabled": true,
       "messageSpam": {
         "enabled": true,
         "threshold": 5,
-        "windowSeconds": 7,
-        "strikeAmount": 1
+        "windowSeconds": 7
       },
       "massMentions": {
         "enabled": true,
-        "threshold": 5,
-        "strikeAmount": 1
+        "threshold": 5
       },
       "inviteLinks": {
-        "enabled": true,
-        "strikeAmount": 1
+        "enabled": true
       },
       "channelCreate": {
         "enabled": true,
         "threshold": 5,
-        "windowSeconds": 30,
-        "strikeAmount": 1
+        "windowSeconds": 30
       },
       "roleCreate": {
         "enabled": true,
         "threshold": 5,
-        "windowSeconds": 30,
-        "strikeAmount": 1
+        "windowSeconds": 30
       }
     },
     "voiceSystem": {

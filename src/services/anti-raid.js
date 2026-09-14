@@ -1,6 +1,7 @@
 const { AuditLogEvent, Events } = require("discord.js");
 const { getGuildSettings } = require("../utils/app-config");
-const { changeStrikeCount } = require("./strikes");
+const { createLogEmbed, sendGuildLog } = require("../utils/guild-log");
+const { formatUser } = require("../utils/text");
 
 const INVITE_LINK_PATTERN = /(?:discord\.gg|discord(?:app)?\.com\/invite)\/[a-zA-Z0-9-]+/i;
 const userMessageTimestamps = new Map();
@@ -28,20 +29,17 @@ function isOnCooldown(key, cooldownMs) {
   return false;
 }
 
-async function addAutoStrike({ guild, user, client, amount, reason, cooldownKey }) {
+async function reportDetection({ guild, user, reason, cooldownKey }) {
   if (!user || user.bot || isOnCooldown(cooldownKey, 60_000)) {
     return;
   }
 
-  await changeStrikeCount({
-    guild,
-    user,
-    moderatorId: client.user.id,
-    amount,
-    reason,
-  }).catch((error) => {
-    console.error(`Failed to add auto strike for ${guild.id}/${user.id}:`, error);
-  });
+  const embed = createLogEmbed("アンチレイド検知", 0xed4245).addFields(
+    { name: "ユーザー", value: formatUser(user), inline: true },
+    { name: "内容", value: reason },
+  );
+
+  await sendGuildLog(guild, "moderation", embed);
 }
 
 async function findRecentExecutor(guild, type, targetId) {
@@ -75,11 +73,9 @@ function registerAntiRaidEvents(client) {
       const count = pushTimestamp(userMessageTimestamps, `${message.guild.id}:${message.author.id}`, windowMs);
 
       if (count >= (settings.messageSpam.threshold ?? 5)) {
-        await addAutoStrike({
+        await reportDetection({
           guild: message.guild,
           user: message.author,
-          client,
-          amount: settings.messageSpam.strikeAmount ?? 1,
           reason: "短時間連投を検知",
           cooldownKey: `spam:${message.guild.id}:${message.author.id}`,
         });
@@ -90,11 +86,9 @@ function registerAntiRaidEvents(client) {
       const mentionCount = message.mentions.users.size + message.mentions.roles.size;
 
       if (mentionCount >= (settings.massMentions.threshold ?? 5)) {
-        await addAutoStrike({
+        await reportDetection({
           guild: message.guild,
           user: message.author,
-          client,
-          amount: settings.massMentions.strikeAmount ?? 1,
           reason: "大量メンションを検知",
           cooldownKey: `mentions:${message.guild.id}:${message.author.id}`,
         });
@@ -102,11 +96,9 @@ function registerAntiRaidEvents(client) {
     }
 
     if (settings.inviteLinks?.enabled !== false && INVITE_LINK_PATTERN.test(message.content)) {
-      await addAutoStrike({
+      await reportDetection({
         guild: message.guild,
         user: message.author,
-        client,
-        amount: settings.inviteLinks.strikeAmount ?? 1,
         reason: "Discord招待リンクを検知",
         cooldownKey: `invite:${message.guild.id}:${message.author.id}`,
       });
@@ -134,11 +126,9 @@ function registerAntiRaidEvents(client) {
     const count = pushTimestamp(createActionTimestamps, `channel:${channel.guild.id}:${executor.id}`, windowMs);
 
     if (count >= (settings.channelCreate.threshold ?? 5)) {
-      await addAutoStrike({
+      await reportDetection({
         guild: channel.guild,
         user: executor,
-        client,
-        amount: settings.channelCreate.strikeAmount ?? 1,
         reason: "大量チャンネル作成を検知",
         cooldownKey: `channel-create:${channel.guild.id}:${executor.id}`,
       });
@@ -162,11 +152,9 @@ function registerAntiRaidEvents(client) {
     const count = pushTimestamp(createActionTimestamps, `role:${role.guild.id}:${executor.id}`, windowMs);
 
     if (count >= (settings.roleCreate.threshold ?? 5)) {
-      await addAutoStrike({
+      await reportDetection({
         guild: role.guild,
         user: executor,
-        client,
-        amount: settings.roleCreate.strikeAmount ?? 1,
         reason: "大量ロール作成を検知",
         cooldownKey: `role-create:${role.guild.id}:${executor.id}`,
       });

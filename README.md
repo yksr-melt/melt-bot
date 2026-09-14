@@ -70,9 +70,7 @@ Spotifyの曲名解決にはLavaSrcプラグインを使いますが、Spotify W
 * `logs.moderation.channelId`: BAN/KICK/TIMEOUTなど処罰関連ログ
 * `logs.invite.channelId`: 招待リンク作成/削除ログ
 * `logs.event.channelId`: イベント作成/編集/削除ログ
-* `moderation.punishments`: Strike数ごとの自動処罰
-* `moderation.strikeRoles`: Strike数ごとの自動付与ロールID
-* `antiRaid`: 短時間連投、大量メンション、招待リンク、大量チャンネル/ロール作成の検知設定
+* `antiRaid`: 短時間連投、大量メンション、招待リンク、大量チャンネル/ロール作成の検知設定（検知時はmoderationログに通知のみ）
 * `voiceSystem.createChannelId`: 自動VC生成トリガーVC
 * `voiceSystem.categoryId`: 生成VCのカテゴリID。空ならトリガーVCと同じカテゴリ
 * `ticket.categoryId`: チケット作成先カテゴリID
@@ -102,11 +100,6 @@ node src/register-commands.js --clear-guild=<古いGUILD_ID>
 * `/rolepanel post`
 * `/rolepanel delete`
 * `/rolepanel list`
-* `/strike add`
-* `/strike remove`
-* `/strike set`
-* `/strike check`
-* `/strike history`
 * `/warn`
 * `/timeout`
 * `/kick`

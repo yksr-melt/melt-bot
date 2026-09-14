@@ -29,51 +29,29 @@ const DEFAULT_GUILD_SETTINGS = {
       },
     ]),
   ),
-  moderation: {
-    strikeDecayDays: 30,
-    punishments: {
-      1: { action: "WARNING" },
-      2: { action: "TIMEOUT", durationSeconds: 86_400 },
-      3: { action: "TIMEOUT", durationSeconds: 604_800 },
-      4: { action: "KICK" },
-      5: { action: "BAN" },
-    },
-    strikeRoles: {
-      1: "",
-      2: "",
-      3: "",
-      4: "",
-      5: "",
-    },
-  },
   antiRaid: {
     enabled: true,
     messageSpam: {
       enabled: true,
       threshold: 5,
       windowSeconds: 7,
-      strikeAmount: 1,
     },
     massMentions: {
       enabled: true,
       threshold: 5,
-      strikeAmount: 1,
     },
     inviteLinks: {
       enabled: true,
-      strikeAmount: 1,
     },
     channelCreate: {
       enabled: true,
       threshold: 5,
       windowSeconds: 30,
-      strikeAmount: 1,
     },
     roleCreate: {
       enabled: true,
       threshold: 5,
       windowSeconds: 30,
-      strikeAmount: 1,
     },
   },
   voiceSystem: {
@@ -159,7 +137,6 @@ function getGuildSettings(guildId) {
   const globalSettings = {
     welcome: config.welcome,
     logs: config.logs,
-    moderation: config.moderation,
     antiRaid: config.antiRaid,
     voiceSystem: config.voiceSystem,
     ticket: config.ticket,
