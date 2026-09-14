@@ -11,7 +11,6 @@ const marshmallowCommand = require("./marshmallow");
 const rankingCommand = require("./ranking");
 const rolePanelCommand = require("./role-panel");
 const slotCommand = require("./slot");
-const strikeCommand = require("./strike");
 const suggestionCommand = require("./suggestion");
 const ticketCommand = require("./ticket");
 const timeoutCommand = require("./timeout");
@@ -34,7 +33,6 @@ const commands = [
   rankingCommand,
   rolePanelCommand,
   slotCommand,
-  strikeCommand,
   suggestionCommand,
   ticketCommand,
   timeoutCommand,
